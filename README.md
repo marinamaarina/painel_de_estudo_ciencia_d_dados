@@ -1,23 +1,33 @@
-# Painel de Estudos
+# Painel de Estudos — GitHub + Vercel + Turso
 
-Painel interativo de acompanhamento da jornada de estudos.
+Painel de acompanhamento da jornada de estudos.
 
-## Publicação no GitHub Pages
+## Arquitetura
 
-Esta versão funciona diretamente no GitHub Pages porque não depende de backend.
+GitHub → Vercel → `/api/state` → Turso
 
-O progresso é salvo no `localStorage` do navegador.
+O token do Turso fica somente nas variáveis de ambiente da Vercel e não é enviado ao navegador.
 
-### Importante
+## Variáveis da Vercel
 
-Os dados ficam salvos **neste navegador e neste dispositivo**. Se você abrir o painel em outro computador ou limpar os dados do navegador, o progresso não será levado junto.
+Configure:
 
-Se futuramente quiser sincronizar os dados entre dispositivos usando Turso, será necessário adicionar um backend/API seguro.
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
 
-## Tecnologias
+Depois faça um novo deploy.
 
-- HTML
-- CSS
-- JavaScript
-- GitHub Pages
-- localStorage
+## Teste
+
+Abra o site publicado pela Vercel e altere algum item do painel. A aplicação deve enviar `POST /api/state`.
+
+Para conferir no Turso:
+
+```sql
+SELECT user_key, state, updated_at
+FROM estudos_painel;
+```
+
+## GitHub Pages
+
+Esta versão **não deve ser publicada pelo GitHub Pages**, porque `/api/state` precisa ser executado em um ambiente server-side. O GitHub continua sendo o repositório do código; a publicação deve ser feita pela Vercel.

@@ -356,7 +356,7 @@
   <header>
     <p class="eyebrow">Plano Mestre · 5 anos · 260 semanas</p>
     <h1>De zero a <span class="grad">Cientista de Dados Sênior</span></h1>
-    <p class="sub">Seu painel de evolução. O tempo passa no calendário; o progresso é o que você conclui. Seu progresso fica salvo neste navegador — feche e volte quando quiser.</p>
+    <p class="sub">Seu painel de evolução. O tempo passa no calendário; o progresso é o que você conclui. Tudo fica salvo — feche e volte quando quiser.</p>
     <div class="setup-inline" id="setupRow"></div>
   </header>
 
@@ -450,26 +450,36 @@
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
+<script>
 /* =========================================================
-   PERSISTÊNCIA — GITHUB PAGES / LOCALSTORAGE
+   PERSISTÊNCIA — API / VERCEL / TURSO
    =========================================================
-   GitHub Pages é hospedagem estática, então o painel salva
-   o progresso diretamente no navegador.
+   O navegador NÃO recebe o token do Turso.
+   Ele conversa com /api/state, executado pela Vercel.
 */
 const USER_KEY = "samuel";
-const STORAGE_KEY = `dsjourney:${USER_KEY}:state`;
+const TABLE = "estudos_painel";
 
 async function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const saved = JSON.parse(raw);
-      state = { ...state, ...saved };
+    const response = await fetch(`/api/state?user_key=${encodeURIComponent(USER_KEY)}`, {
+      method: "GET",
+      headers: { "Accept": "application/json" }
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`GET /api/state ${response.status}: ${detail}`);
+    }
+
+    const data = await response.json();
+
+    if (data.state) {
+      state = { ...state, ...data.state };
     }
   } catch (e) {
-    console.error("Erro ao carregar o progresso:", e);
-    toast("Não consegui carregar seus dados salvos.");
+    console.error("Erro ao carregar do banco:", e);
+    toast("Não consegui carregar seus dados do banco.");
   }
 }
 
@@ -477,14 +487,236 @@ let saveTimer = null;
 async function saveState() {
   clearTimeout(saveTimer);
 
-  saveTimer = setTimeout(() => {
+  saveTimer = setTimeout(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const response = await fetch("/api/state", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          user_key: USER_KEY,
+          state
+        })
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`POST /api/state ${response.status}: ${detail}`);
+      }
+
+      console.log("✓ Progresso salvo no Turso");
     } catch (e) {
-      console.error("Erro ao salvar o progresso:", e);
-      toast("Não consegui salvar seus dados no navegador.");
+      console.error("Erro ao salvar no banco:", e);
+      toast("Não consegui salvar agora — verifique a API/Turso.");
     }
-  }, 100);
+  }, 300);
+}
+
+/* =========================================================
+   DADOS DO PLANO
+   ========================================================= */
+const PHASES = [
+  { id:1, name:"Fundação",                     w:"S1–52",    color:"var(--f1)" },
+  { id:2, name:"Núcleo de Data Science",       w:"S53–104",  color:"var(--f2)" },
+  { id:3, name:"Especialização Técnica",       w:"S105–156", color:"var(--f3)" },
+  { id:4, name:"Autoridade e Escala",          w:"S157–208", color:"var(--f4)" },
+  { id:5, name:"Mercado Internacional",        w:"S209–260", color:"var(--f5)" },
+];
+
+const TRIMESTERS = [
+  {id:"T1",  ph:1, w:"1–13",    theme:"Aritmética, Álgebra, Funções, Lógica, Python básico"},
+  {id:"T2",  ph:1, w:"14–26",   theme:"Vetores/Matrizes, Python (OOP, erros), SQL básico/JOIN"},
+  {id:"T3",  ph:1, w:"27–39",   theme:"Estatística descritiva, Probabilidade, Pandas avançado"},
+  {id:"T4",  ph:1, w:"40–52",   theme:"Regressão linear from scratch, Scikit-learn intro"},
+  {id:"T5",  ph:2, w:"53–65",   theme:"Álgebra Linear avançada, Cálculo (gradiente)"},
+  {id:"T6",  ph:2, w:"66–78",   theme:"Estatística inferencial, testes de hipótese, A/B"},
+  {id:"T7",  ph:2, w:"79–91",   theme:"Classificação, árvores, Random Forest, XGBoost"},
+  {id:"T8",  ph:2, w:"92–104",  theme:"Clustering, recomendação, storytelling de dados"},
+  {id:"T9",  ph:3, w:"105–117", theme:"Git avançado, Docker, APIs, ETL"},
+  {id:"T10", ph:3, w:"118–130", theme:"Redes Neurais, Deep Learning (CNNs), PyTorch"},
+  {id:"T11", ph:3, w:"131–143", theme:"NLP, Transformers, Cloud (AWS fundamentos)"},
+  {id:"T12", ph:3, w:"144–156", theme:"Spark, Airflow, LLMs intro, RAG básico"},
+  {id:"T13", ph:4, w:"157–169", theme:"MLOps: FastAPI, MLflow, Docker para ML"},
+  {id:"T14", ph:4, w:"170–182", theme:"Agentes de IA, LangGraph, otimização avançada"},
+  {id:"T15", ph:4, w:"183–195", theme:"CI/CD, monitoramento, SageMaker, cert. AWS ML"},
+  {id:"T16", ph:4, w:"196–208", theme:"Especialização escolhida + mentoria"},
+  {id:"T17", ph:5, w:"209–221", theme:"Inglês técnico avançado, mock interviews"},
+  {id:"T18", ph:5, w:"222–234", theme:"Open source sério, artigo técnico publicado"},
+  {id:"T19", ph:5, w:"235–247", theme:"Pesquisa aplicada, currículo internacional"},
+  {id:"T20", ph:5, w:"248–260", theme:"Aplicações internacionais, negociação salarial"},
+];
+
+const PROJECTS = [
+  {id:1,  ph:1, s:1, t:"Análise exploratória de dataset público"},
+  {id:2,  ph:1, s:1, t:"Dashboard interativo de indicadores"},
+  {id:3,  ph:1, s:2, t:"Projeto SQL: e-commerce fictício"},
+  {id:4,  ph:1, s:2, t:"Web scraping + limpeza de dados reais"},
+  {id:5,  ph:1, s:2, t:"Previsão de preços (regressão)"},
+  {id:6,  ph:2, s:3, t:"Classificação de churn de clientes"},
+  {id:7,  ph:2, s:3, t:"Segmentação de clientes (clustering)"},
+  {id:8,  ph:2, s:4, t:"Sistema de detecção de fraude"},
+  {id:9,  ph:2, s:3, t:"Teste A/B completo simulado"},
+  {id:10, ph:2, s:4, t:"Sistema de recomendação"},
+  {id:11, ph:2, s:4, t:"Previsão de séries temporais"},
+  {id:12, ph:2, s:3, t:"Dashboard de negócio com storytelling"},
+  {id:13, ph:3, s:4, t:"Classificador de imagens com CNN"},
+  {id:14, ph:3, s:4, t:"Análise de sentimento com NLP"},
+  {id:15, ph:3, s:5, t:"Sistema de RAG sobre documentos"},
+  {id:16, ph:4, s:5, t:"Agente de IA com uso de ferramentas"},
+  {id:17, ph:3, s:4, t:"Pipeline de dados (Airflow + Spark)"},
+  {id:18, ph:4, s:5, t:"Modelo em produção (MLOps end-to-end)"},
+  {id:19, ph:4, s:4, t:"Contribuição open source real"},
+  {id:20, ph:5, s:5, t:"Pesquisa aplicada + artigo publicado"},
+];
+
+const LEVELS = [
+  {n:"Nível 1 — Fundamentos", ids:[1,2,3,4,5]},
+  {n:"Nível 2 — Consolidação", ids:[6,7,8,9,10,11,12]},
+  {n:"Nível 3 — Especialização técnica", ids:[13,14,15,17]},
+  {n:"Nível 4 — Produção e liderança", ids:[16,18,19,20]},
+];
+
+const KPIS = [
+  {k:"horas",     name:"Horas estudadas",             target:65},
+  {k:"projetos",  name:"Projetos concluídos",          target:1},
+  {k:"livros",    name:"Livros técnicos lidos",        target:2},
+  {k:"exerc",     name:"Exercícios resolvidos",        target:50},
+  {k:"commits",   name:"Commits significativos",       target:20},
+  {k:"posts",     name:"Posts publicados",             target:4},
+  {k:"ingles",    name:"Termos novos em inglês (Anki)", target:50},
+];
+
+/* Detalhe de cada trimestre: entregável, meta de fase, projetos ligados, foco */
+const TRI_DETAIL = {
+  T1:{deliver:"Projeto 1 (EDA) + 100 exercícios de lógica resolvidos", projRefs:[1], focus:["Aritmética, álgebra e funções (base)","Lógica de programação e Python básico","Estruturas de dados nativas + primeiros exercícios"]},
+  T2:{deliver:"Projeto 3 (SQL) concluído", projRefs:[3], focus:["Intro a vetores e matrizes","Python: OOP e tratamento de erros","SQL básico: SELECT, WHERE, JOIN"]},
+  T3:{deliver:"Projeto 2 (Dashboard) + Projeto 4 (Scraping)", projRefs:[2,4], focus:["Estatística descritiva e probabilidade","Pandas avançado (groupby, merge)","Window Functions em SQL"]},
+  T4:{deliver:"Projeto 5 (Previsão de preços)", goal:"Primeira candidatura a estágio / júnior", projRefs:[5], focus:["Regressão linear: teoria + implementação from scratch","Intro ao Scikit-learn","Métricas de regressão (RMSE, MAE, R²)"]},
+  T5:{deliver:"Regressão logística e k-means implementados do zero", projRefs:[], focus:["Álgebra linear avançada (SVD, PCA)","Cálculo: derivadas, regra da cadeia, gradiente","Base matemática do backpropagation"]},
+  T6:{deliver:"Projeto 9 (Teste A/B simulado)", projRefs:[9], focus:["Estatística inferencial","Testes de hipótese (t, qui-quadrado, ANOVA)","Design de experimentos A/B, p-value correto"]},
+  T7:{deliver:"Projeto 6 (Churn) + Projeto 8 (Fraude)", projRefs:[6,8], focus:["Classificação e métricas p/ dados desbalanceados","Árvores de decisão, Random Forest","XGBoost / LightGBM"]},
+  T8:{deliver:"Projeto 7 (Segmentação) + Projeto 10 (Recomendação)", goal:"Transição para Cientista de Dados Jr/Pleno", projRefs:[7,10], focus:["Clustering (k-means, DBSCAN)","Sistemas de recomendação","Storytelling com dados"]},
+  T9:{deliver:"Projeto 17 (parte 1: pipeline básico)", projRefs:[17], focus:["Git/GitHub avançado","Docker: containers e Dockerfile","APIs REST e ETL/ELT"]},
+  T10:{deliver:"Projeto 13 (Classificador de imagens)", projRefs:[13], focus:["Redes neurais e backpropagation","Deep Learning: CNNs","PyTorch e transfer learning"]},
+  T11:{deliver:"Projeto 14 (Análise de sentimento)", projRefs:[14], focus:["NLP: tokenização, TF-IDF, embeddings","Transformers e Hugging Face","AWS fundamentos (S3, EC2, IAM)"]},
+  T12:{deliver:"Projeto 15 (RAG) + Projeto 17 completo", goal:"Cientista de Dados Pleno/Sênior", projRefs:[15,17], focus:["Spark (PySpark) e Airflow","LLMs: arquitetura e prompt engineering","RAG: embeddings + vector databases"]},
+  T13:{deliver:"Projeto 18 (parte 1)", projRefs:[18], focus:["MLOps: deploy de modelos","FastAPI para servir previsões","MLflow: versionamento de experimentos"]},
+  T14:{deliver:"Projeto 16 (Agente de IA)", projRefs:[16], focus:["Agentes de IA e uso de ferramentas","LangGraph e orquestração","Otimização avançada"]},
+  T15:{deliver:"Projeto 18 completo + certificação AWS ML", projRefs:[18], focus:["CI/CD para ML (GitHub Actions)","Monitoramento e data drift","AWS SageMaker + cert. AWS ML Specialty"]},
+  T16:{deliver:"Projeto de especialização avançado", goal:"Sênior / Especialista", projRefs:[], focus:["Especialização escolhida em profundidade","(NLP/LLMs, Visão Computacional ou MLE)","Mentoria de outras pessoas"]},
+  T17:{deliver:"Simulados semanais de entrevista", projRefs:[], focus:["Inglês técnico avançado","Mock interviews em inglês","Elevator pitch dos projetos"]},
+  T18:{deliver:"Projeto 19 (PR aceito) + artigo publicado", projRefs:[19], focus:["Contribuição open source séria","Artigo técnico publicado","Comunicação técnica escrita"]},
+  T19:{deliver:"Projeto 20 concluído e publicado", projRefs:[20], focus:["Pesquisa aplicada","Currículo internacional (formato americano)","Reprodutibilidade e código público"]},
+  T20:{deliver:"Aplicações + negociação salarial", goal:"Oferta internacional ou remota em USD/EUR", projRefs:[], focus:["Aplicações ativas para vagas remotas/internacionais","Negociação de salário","Fechamento da jornada de 5 anos"]},
+};
+
+/* Detalhe de cada projeto */
+const PROJ_DETAIL = {
+  1:{tech:"Python, Pandas, Matplotlib/Seaborn, Jupyter", dif:"Contar uma história com os dados, não só gerar gráficos.", time:"1 semana", tip:"Fale sobre 1 descoberta não óbvia que você achou nos dados."},
+  2:{tech:"Streamlit, Plotly, Pandas", dif:"Permitir que o usuário filtre por região/período.", time:"1–2 semanas", tip:"Deploy gratuito no Streamlit Community Cloud."},
+  3:{tech:"PostgreSQL, DBeaver", dif:"Usar window functions para métricas como retenção mês a mês.", time:"2 semanas", tip:"Documente as perguntas de negócio respondidas."},
+  4:{tech:"Python, BeautifulSoup, requests, Pandas", dif:"Lidar com dados realmente bagunçados (raro em cursos).", time:"1–2 semanas", tip:""},
+  5:{tech:"Scikit-learn", dif:"Comparar 3 modelos e justificar o vencedor (RMSE, MAE, R²).", time:"2 semanas", tip:""},
+  6:{tech:"Scikit-learn, imbalanced-learn", dif:"Tratar desbalanceamento (SMOTE) e explicar trade-off precisão/recall.", time:"2–3 semanas", tip:""},
+  7:{tech:"Scikit-learn, PCA", dif:"Dar nomes de negócio aos clusters, não só 'cluster 1, 2, 3'.", time:"2 semanas", tip:""},
+  8:{tech:"XGBoost, SHAP", dif:"Calcular custo de falso positivo vs. falso negativo em dinheiro.", time:"3 semanas", tip:"É o que bancos como Nubank fazem de verdade."},
+  9:{tech:"Python, SciPy, statsmodels", dif:"Simular dados com efeito conhecido e mostrar que o teste detecta.", time:"2 semanas", tip:""},
+  10:{tech:"Surprise, Scikit-learn", dif:"Comparar recomendação baseada em conteúdo vs. colaborativa.", time:"3 semanas", tip:""},
+  11:{tech:"statsmodels, Prophet, XGBoost", dif:"Comparar ARIMA clássico com ML (XGBoost + features de lag).", time:"3 semanas", tip:""},
+  12:{tech:"Power BI ou Streamlit, SQL", dif:"Simular apresentação de 5 min para diretoria com recomendações.", time:"2–3 semanas", tip:""},
+  13:{tech:"PyTorch, torchvision", dif:"Usar transfer learning (ResNet/EfficientNet) e explicar por quê.", time:"3 semanas", tip:""},
+  14:{tech:"Hugging Face Transformers, scikit-learn", dif:"Comparar TF-IDF+LogReg vs. BERT fine-tuned.", time:"3 semanas", tip:"Mostre saber quando o modelo simples já basta."},
+  15:{tech:"LangChain ou LlamaIndex, ChromaDB/Pinecone, LLM", dif:"Aplicar a domínio real e medir a qualidade das respostas.", time:"3–4 semanas", tip:""},
+  16:{tech:"LangGraph, API com tool use", dif:"Mostrar automação de tarefa de negócio real, não chatbot genérico.", time:"3–4 semanas", tip:""},
+  17:{tech:"PySpark, Airflow, Docker", dif:"Processar dataset grande (>1GB) de forma distribuída.", time:"3 semanas", tip:""},
+  18:{tech:"FastAPI, MLflow, Docker, GitHub Actions, AWS", dif:"Simular data drift e mostrar sistema de alerta funcionando.", time:"4 semanas", tip:""},
+  19:{tech:"Varia conforme o projeto", dif:"Pelo menos 1 pull request aceito em projeto usado por outras pessoas.", time:"Contínuo", tip:""},
+  20:{tech:"Todas as anteriores + escrita técnica", dif:"Publicar em PT e EN, com rigor de fontes e código público.", time:"4–6 semanas", tip:""},
+};
+
+/* Guia de estudos por disciplina (roteiros condensados) */
+const GUIDE = [
+  {t:"Matemática", c:"var(--f1)", items:["Aritmética e lógica numérica","Álgebra (equações, sistemas lineares)","Funções (a base de todo modelo)","Logaritmos e exponenciais","Vetores (produto escalar, norma)","Matrizes e Álgebra Linear (SVD, PCA) — a base mais importante","Probabilidade (Bayes, distribuições)","Estatística descritiva e inferencial","Cálculo (derivadas, gradiente, regra da cadeia)","Otimização (gradiente descendente, Adam)"]},
+  {t:"Programação (Python)", c:"var(--f2)", items:["Sintaxe, estruturas de dados nativas","Funções, tratamento de erros","Classes e OOP","Type hints e ambientes virtuais (venv/poetry)","Testes com pytest","NumPy → Pandas → Matplotlib → Plotly → Scikit-learn"]},
+  {t:"SQL", c:"var(--f2)", items:["SELECT, WHERE, ORDER BY, LIMIT","JOINs (INNER, LEFT, self-join)","GROUP BY e agregações","Subqueries","Window Functions (divisor júnior/pleno)","CTEs (WITH), Views, Índices","Modelagem (star schema) — PostgreSQL"]},
+  {t:"Estatística", c:"var(--f2)", items:["Descritiva: média, mediana, variância, correlação","Distribuições (Normal, Binomial, Poisson)","Regressão linear e logística","Testes de hipótese (t, qui-quadrado, ANOVA)","P-value (entenda o que NÃO é)","Bootstrap e inferência causal (A/B testing)"]},
+  {t:"Machine Learning", c:"var(--f3)", items:["Regressão (linear, Ridge/Lasso)","Classificação (logística, k-NN) + métricas","Clustering (k-means, DBSCAN)","Árvores → Random Forest → XGBoost/LightGBM","SVM (conceitual)","Redes Neurais → Deep Learning","NLP, LLMs, RAG, Agentes de IA"]},
+  {t:"Engenharia de Dados", c:"var(--f3)", items:["Git e GitHub (desde a Fase 1)","Docker (containers, docker-compose)","APIs REST","ETL/ELT","Apache Spark (PySpark)","Airflow (orquestração)","Data Warehouse vs. Lakehouse (dbt, Databricks)"]},
+  {t:"Cloud (AWS primeiro)", c:"var(--f4)", items:["S3 (armazenamento)","EC2 (compute)","IAM (acesso e segurança)","RDS (bancos gerenciados)","SageMaker (ML gerenciado)","Lambda (serverless)"]},
+  {t:"MLOps", c:"var(--f4)", items:["Deploy de modelos (batch vs. real-time)","FastAPI para servir previsões","MLflow (versionamento)","Monitoramento (data drift, model decay)","DVC / Model Registry","CI/CD para ML (GitHub Actions)"]},
+  {t:"Carreira", c:"var(--f5)", items:["GitHub profissional (README que vende o projeto)","LinkedIn: headline com valor, 1–2 posts/semana","Currículo por etapa (projetos > experiência no início)","Inglês técnico: docs em EN desde o mês 1","Kaggle vale mais que muita certificação","AWS Cloud Practitioner → AWS ML Specialty"]},
+];
+
+/* Rotina semanal fixa */
+const ROUTINE = [
+  {d:"Segunda", t:"Matemática", h:"2h", w:"Teoria + exercícios + implementação em Python"},
+  {d:"Terça", t:"Programação / Python", h:"2h", w:"Documentação + prática de código e projeto"},
+  {d:"Quarta", t:"SQL / Banco de Dados", h:"1h30", w:"Teoria + exercícios (StrataScratch, DataLemur)"},
+  {d:"Quinta", t:"Estatística / ML", h:"2h", w:"Teoria + implementação em dataset real"},
+  {d:"Sexta", t:"Inglês + Eng/Cloud/MLOps", h:"1h30", w:"Inglês técnico + tópico da fase"},
+  {d:"Sábado", t:"Projeto de portfólio", h:"3–4h", w:"Bloco profundo: avançar o projeto do trimestre"},
+  {d:"Domingo", t:"Revisão + consolidação", h:"1–1h30", w:"Anki, releitura, 1 post no LinkedIn, planejar semana"},
+];
+
+/* Biblioteca — livros por categoria */
+const BOOKS = [
+  {cat:"Matemática", items:["Álgebra Linear e suas Aplicações — David Lay","A First Course in Probability — Sheldon Ross","Calculus — James Stewart","Mathematics for Machine Learning — Deisenroth et al. (grátis)","Linear Algebra Done Right — Axler"]},
+  {cat:"Estatística", items:["Estatística Básica — Bussab e Morettin","Naked Statistics — Charles Wheelan","An Introduction to Statistical Learning (ISLR, grátis)","The Elements of Statistical Learning (ESL)","Trustworthy Online Controlled Experiments — Kohavi et al.","Practical Statistics for Data Scientists"]},
+  {cat:"Python", items:["Python Crash Course — Eric Matthes","Fluent Python — Luciano Ramalho","Python for Data Analysis — Wes McKinney","Effective Python — Brett Slatkin","Clean Code — Robert C. Martin"]},
+  {cat:"Machine Learning e IA", items:["Hands-On ML — Aurélien Géron","Deep Learning — Goodfellow et al. (grátis)","Designing Machine Learning Systems — Chip Huyen","Speech and Language Processing — Jurafsky & Martin","Interpretable Machine Learning — Molnar (grátis)","Feature Engineering for ML — Zheng & Casari"]},
+  {cat:"Eng. de Dados / MLOps", items:["Designing Data-Intensive Applications — Kleppmann","Fundamentals of Data Engineering — Reis & Housley","Machine Learning Design Patterns"]},
+  {cat:"Negócios e Comunicação", items:["Storytelling with Data — Cole Knaflic","The Signal and the Noise — Nate Silver","Made to Stick — Chip & Dan Heath","Never Split the Difference — Chris Voss"]},
+  {cat:"Produtividade e Carreira", items:["Deep Work — Cal Newport","Atomic Habits — James Clear","So Good They Can't Ignore You — Cal Newport","Cracking the Data Science Interview","Ace the Data Science Interview","Educated — Tara Westover"]},
+];
+
+const phaseColor = ph => `var(--f${ph})`;
+
+/* =========================================================
+   ESTADO + PERSISTÊNCIA
+   ========================================================= */
+const KEY = "dsjourney:state";
+let state = {
+  startDate: null,       // "YYYY-MM-DD"
+  doneTri: [],           // ["T1", ...]
+  doneProj: [],          // [1, 2, ...]
+  kpis: {},              // { "2026-07": { horas: 40, ... } }
+  log: {},               // { "2026-07-27": 2 }
+};
+let viewMonth = ymNow();
+
+async function loadState() {
+  try {
+    await ensureTable();
+    const rs = await turso.execute({
+      sql: `SELECT state FROM ${TABLE} WHERE user_key = ?`,
+      args: [USER_KEY],
+    });
+    if (rs.rows.length > 0 && rs.rows[0].state) {
+      const saved = JSON.parse(rs.rows[0].state);
+      state = { ...state, ...saved };
+    }
+  } catch (e) {
+    console.error('Erro ao carregar do Turso:', e);
+    toast('Não consegui carregar seus dados. Confira a conexão.');
+  }
+}
+let saveTimer = null;
+async function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await turso.execute({
+        sql: `INSERT INTO ${TABLE} (user_key, state, updated_at) VALUES (?, ?, ?)
+              ON CONFLICT(user_key) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
+        args: [USER_KEY, JSON.stringify(state), new Date().toISOString()],
+      });
+    } catch (e) {
+      console.error('Erro ao salvar no Turso:', e);
+      toast('Não consegui salvar agora — verifique sua conexão.');
+    }
+  }, 300);
 }
 
 /* =========================================================
@@ -846,8 +1078,7 @@ $("#resetBtn").onclick = () => {
   if(confirm("Isto apaga todo o seu progresso salvo. Continuar?")){
     state = { startDate:null, doneTri:[], doneProj:[], kpis:{}, log:{} };
     viewMonth = ymNow();
-    saveState();
-    renderAll();
+    saveState(); renderAll();
     toast("Zerado. Página em branco pra recomeçar.");
   }
 };

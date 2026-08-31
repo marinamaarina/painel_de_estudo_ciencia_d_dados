@@ -1,0 +1,11 @@
+{
+  "name": "painel-estudos-turso",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15"
+  }
+}

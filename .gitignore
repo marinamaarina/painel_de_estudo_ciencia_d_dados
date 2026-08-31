@@ -1,2 +1,6 @@
-# Nenhum segredo é necessário para esta versão estática
+node_modules/
+.vercel/
+.env
+.env.local
+.env.*.local
 .DS_Store
