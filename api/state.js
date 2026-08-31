@@ -1,5 +1,8 @@
 const { createClient } = require("@libsql/client");
 
+console.log("TURSO_DATABASE_URL existe:", !!process.env.TURSO_DATABASE_URL);
+console.log("TURSO_AUTH_TOKEN existe:", !!process.env.TURSO_AUTH_TOKEN);
+
 const TABLE = "estudos_painel";
 
 function getClient() {
