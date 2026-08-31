@@ -1,16 +1,13 @@
 const { createClient } = require("@libsql/client");
 
-console.log("TURSO_DATABASE_URL existe:", !!process.env.TURSO_DATABASE_URL);
-console.log("TURSO_AUTH_TOKEN existe:", !!process.env.TURSO_AUTH_TOKEN);
-
 const TABLE = "estudos_painel";
 
 function getClient() {
   const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  console.log("ENV TURSO URL:", !!url);
-  console.log("ENV TURSO TOKEN:", !!authToken);
+  console.log("TURSO_DATABASE_URL existe:", !!url);
+  console.log("TURSO_AUTH_TOKEN existe:", !!authToken);
 
   if (!url) {
     throw new Error("TURSO_DATABASE_URL não chegou na Vercel.");
@@ -18,20 +15,6 @@ function getClient() {
 
   if (!authToken) {
     throw new Error("TURSO_AUTH_TOKEN não chegou na Vercel.");
-  }
-
-  return createClient({
-    url,
-    authToken
-  });
-}function getClient() {
-  const url = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-
-  if (!url || !authToken) {
-    throw new Error(
-      "TURSO_DATABASE_URL ou TURSO_AUTH_TOKEN não configurado."
-    );
   }
 
   return createClient({
@@ -154,7 +137,7 @@ module.exports = async function handler(req, res) {
     console.error("API /api/state:", error);
 
     return res.status(500).json({
-      error: "Erro interno ao acessar o Turso."
+      error: error.message || "Erro interno ao acessar o Turso."
     });
   }
 };
